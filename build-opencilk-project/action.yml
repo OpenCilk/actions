@@ -1,0 +1,110 @@
+name: 'Build the OpenCilk compiler'
+description: 'Build the OpenCilk compiler from source'
+inputs:
+  extra_cmake_args:
+    description: 'CMake arguments'
+    required: false
+  os_list:
+    description: 'Host OS'
+    required: false
+    type: string
+    default: '["ubuntu-lastest", "macOS-13"]'
+  build_target:
+    description: 'Ninja build target'
+    required: false
+    default: 'all'
+  projects:
+    description: 'LLVM subprojects to build'
+    required: false
+    default: 'clang'
+  python_version:
+    required: false
+    type: string
+    default: '3.11'
+
+outputs:
+  opencilk-builddir:
+    description: "OpenCilk build directory"
+    value: ${{ steps.build-opencilk.outputs.opencilk-builddir }}
+
+permissions:
+  contents: read
+
+runs:
+  using: "composite"
+  runs-on: ${{ matrix.os }}
+  container:
+    image: ${{(startsWith(matrix.os, 'ubuntu') && 'ghcr.io/llvm/ci-ubuntu-22.04:latest') || null}}
+    volumes:
+      - /mnt/:/mnt/
+  strategy:
+    fail-fast: false
+    matrix:
+      os: ${{ fromJSON(inputs.os_list) }}
+  steps:
+    # On Windows, starting with win19/20220814.1, cmake choose the 32-bit
+    # python3.10.6 libraries instead of the 64-bit libraries when building
+    # lldb.  Using this setup-python action to make 3.10 the default
+    # python fixes this.
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ inputs.python_version }}
+    - name: Install Ninja
+      if: runner.os != 'Linux'
+      uses: llvm/actions/install-ninja@main
+    # actions/checkout deletes any existing files in the new git directory,
+    # so this needs to either run before ccache-action or it has to use
+    # clean: false.
+    - name: Checkout OpenCilk
+      uses: actions/checkout@v4
+      with:
+        repository: OpenCilk/opencilk-project
+        path: opencilk
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1
+      with:
+        # A full build of llvm, clang, lld, and lldb takes about 250MB
+        # of ccache space. There's not much reason to have more than this,
+        # because we usually won't need to save cache entries from older
+        # builds.  Also, there is an overall 10GB cache limit, and each
+        # run creates a new cache entry so we want to ensure that we have
+        # enough cache space for all the tests to run at once and still
+        # fit under the 10 GB limit.
+        # Default to 2G to workaround: https://github.com/hendrikmuhs/ccache-action/issues/174
+        max-size: 2G
+        key: ${{ matrix.os }}
+        variant: sccache
+    - name: Build
+      env:
+        # Workaround for https://github.com/actions/virtual-environments/issues/5900.
+        # This should be a no-op for non-mac OSes
+        PKG_CONFIG_PATH: /usr/local/Homebrew/Library/Homebrew/os/mac/pkgconfig//12
+      shell: bash
+      id: build-opencilk
+      run: |
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          builddir="/mnt/opencilk-build/"
+          mkdir -p $builddir
+          extra_cmake_args="-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
+        else
+          builddir="$(pwd)"/opencilk-build
+        fi
+        if [ "${{ runner.os }}" == "macOS" ]; then
+          # Workaround test failure on some lld tests on MacOS
+          # https://github.com/llvm/llvm-project/issues/81967
+          extra_cmake_args="-DLLVM_DISABLE_ASSEMBLY_FILES=ON"
+        fi
+        echo "opencilk-builddir=$builddir" >> "$GITHUB_OUTPUT"
+        cmake -G Ninja \
+              -B "$builddir" \
+              -S opencilk/llvm \
+              -DLLVM_ENABLE_PROJECTS="${{ inputs.projects }}" \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DLLVM_ENABLE_ASSERTIONS=ON \
+              -DLLDB_INCLUDE_TESTS=OFF \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              $extra_cmake_args \
+              ${{ inputs.extra_cmake_args }}
+        ninja -C "$builddir" '${{ inputs.build_target }}'
