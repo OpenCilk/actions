@@ -74,14 +74,11 @@ runs:
       shell: bash
       id: build-opencilk
       run: |
+        builddir="$(pwd)"/opencilk/build
+        mkdir -p $builddir
         if [ "${{ runner.os }}" == "Linux" ]; then
-          builddir="/mnt/opencilk-build/"
-          mkdir -p $builddir
           extra_cmake_args="-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
-        else
-          builddir="$(pwd)"/opencilk-build
-        fi
-        if [ "${{ runner.os }}" == "macOS" ]; then
+        elif [ "${{ runner.os }}" == "macOS" ]; then
           # Workaround test failure on some lld tests on MacOS
           # https://github.com/llvm/llvm-project/issues/81967
           extra_cmake_args="-DLLVM_DISABLE_ASSEMBLY_FILES=ON"
