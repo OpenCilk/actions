@@ -32,15 +32,6 @@ permissions:
 
 runs:
   using: "composite"
-  runs-on: ${{ matrix.os }}
-  container:
-    image: ${{(startsWith(matrix.os, 'ubuntu') && 'ghcr.io/llvm/ci-ubuntu-22.04:latest') || null}}
-    volumes:
-      - /mnt/:/mnt/
-  strategy:
-    fail-fast: false
-    matrix:
-      os: ${{ fromJSON(inputs.os_list) }}
   steps:
     # On Windows, starting with win19/20220814.1, cmake choose the 32-bit
     # python3.10.6 libraries instead of the 64-bit libraries when building
