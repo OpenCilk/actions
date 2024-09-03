@@ -1,0 +1,59 @@
+name: 'Build cheetah'
+description: 'Build cheetah from source'
+inputs:
+  extra_cmake_args:
+    description: 'CMake arguments'
+    required: false
+  os_list:
+    description: 'Host OS'
+    required: false
+    type: string
+    default: '["ubuntu-lastest", "macOS-13"]'
+  build_target:
+    description: 'Ninja build target'
+    required: false
+    default: 'all'
+  opencilk_build:
+    description: 'Path to OpenCilk build directory'
+    required: false
+    default: '$(pwd)/opencilk/build'
+
+outputs:
+  cheetah-builddir:
+    description: "Cheetah build directory"
+    value: ${{ steps.build-cheetah.outputs.cheetah-builddir }}
+
+permissions:
+  contents: read
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Ninja
+      if: runner.os != 'Linux'
+      uses: llvm/actions/install-ninja@main
+    # actions/checkout deletes any existing files in the new git directory,
+    # so this needs to either run before ccache-action or it has to use
+    # clean: false.
+    - name: Checkout cheetah
+      uses: actions/checkout@v4
+      with:
+        repository: OpenCilk/cheetah
+        path: cheetah
+    - name: Build
+      id: build-cheetah
+      shell: bash
+      run: |
+        builddir="$(pwd)"/cheetah/build
+        opencilkdir='${{ inputs.opencilk_build }}'
+        mkdir -p $builddir
+        echo "cheetah-builddir=$builddir" >> "$GITHUB_OUTPUT"
+        cmake -G Ninja \
+              -B "$builddir" \
+              -S cheetah \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER=$opencilkdir/bin/clang \
+              -DCMAKE_CXX_COMPILER=$opencilkdir/bin/clang++ \
+              -DLLVM_CMAKE_DIR=$opencilkdir \
+              ${{ inputs.extra_cmake_args }}
+        ninja -C "$builddir" '${{ inputs.build_target }}'
