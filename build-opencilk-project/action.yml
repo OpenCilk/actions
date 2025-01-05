@@ -33,14 +33,6 @@ permissions:
 runs:
   using: "composite"
   steps:
-    # On Windows, starting with win19/20220814.1, cmake choose the 32-bit
-    # python3.10.6 libraries instead of the 64-bit libraries when building
-    # lldb.  Using this setup-python action to make 3.10 the default
-    # python fixes this.
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ inputs.python_version }}
     - name: Install Ninja
       if: runner.os != 'Linux'
       uses: llvm/actions/install-ninja@main
