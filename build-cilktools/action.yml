@@ -17,6 +17,10 @@ inputs:
     description: 'Path to OpenCilk install directory'
     required: false
     default: '$(pwd)/opencilk/install'
+  opencilk_build:
+    description: 'Path to OpenCilk build directory'
+    required: false
+    default: '$(pwd)/opencilk/build'
 
 outputs:
   cilktools-builddir:
@@ -46,6 +50,7 @@ runs:
       run: |
         builddir="$(pwd)"/cilktools/build
         opencilkdir='${{ inputs.opencilk_install }}'
+        opencilkbuilddir='${{ inputs.opencilk_build }}'
         clangversion="$($opencilkdir/bin/llvm-config --version | cut -d '.' -f 1)"
         mkdir -p $builddir
         echo "cilktools-builddir=$builddir" >> "$GITHUB_OUTPUT"
@@ -55,7 +60,7 @@ runs:
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=$opencilkdir/bin/clang \
               -DCMAKE_CXX_COMPILER=$opencilkdir/bin/clang++ \
-              -DLLVM_CMAKE_DIR=$opencilkdir \
+              -DLLVM_CMAKE_DIR=$opencilkbuilddir \
               -DCMAKE_INSTALL_PREFIX=$opencilkdir \
               -DCILKTOOLS_OUTPUT_DIR="$(pwd)"/lib/clang/$clangversion \
               -DCILKTOOLS_INSTALL_PATH=$opencilkdir/lib/clang/$clangversion \
