@@ -46,7 +46,7 @@ runs:
       run: |
         builddir="$(pwd)"/cilktools/build
         opencilkdir='${{ inputs.opencilk_install }}'
-        clangversion="$(opencilkdir/bin/llvm-config --version | cut -d '.' -f 1)"
+        clangversion="$($opencilkdir/bin/llvm-config --version | cut -d '.' -f 1)"
         mkdir -p $builddir
         echo "cilktools-builddir=$builddir" >> "$GITHUB_OUTPUT"
         cmake -G Ninja \
