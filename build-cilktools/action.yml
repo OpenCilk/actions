@@ -1,0 +1,63 @@
+name: 'Build cilktools'
+description: 'Build cilktools from source'
+inputs:
+  extra_cmake_args:
+    description: 'CMake arguments'
+    required: false
+  os_list:
+    description: 'Host OS'
+    required: false
+    type: string
+    default: '["ubuntu-latest", "macOS-13"]'
+  build_target:
+    description: 'Ninja build target'
+    required: false
+    default: 'install'
+  opencilk_install:
+    description: 'Path to OpenCilk install directory'
+    required: false
+    default: '$(pwd)/opencilk/install'
+
+outputs:
+  cilktools-builddir:
+    description: "Cilktools build directory"
+    value: ${{ steps.build-cilktools.outputs.cilktools-builddir }}
+
+permissions:
+  contents: read
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Ninja
+      if: runner.os != 'Linux'
+      uses: llvm/actions/install-ninja@main
+    # actions/checkout deletes any existing files in the new git directory,
+    # so this needs to either run before ccache-action or it has to use
+    # clean: false.
+    - name: Checkout cilktools
+      uses: actions/checkout@v4
+      with:
+        repository: OpenCilk/productivity-tools
+        path: cilktools
+    - name: Build
+      id: build-cilktools
+      shell: bash
+      run: |
+        builddir="$(pwd)"/cilktools/build
+        opencilkdir='${{ inputs.opencilk_install }}'
+        clangversion="$(opencilkdir/bin/llvm-config --version | cut -d '.' -f 1)"
+        mkdir -p $builddir
+        echo "cilktools-builddir=$builddir" >> "$GITHUB_OUTPUT"
+        cmake -G Ninja \
+              -B "$builddir" \
+              -S cilktools \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER=$opencilkdir/bin/clang \
+              -DCMAKE_CXX_COMPILER=$opencilkdir/bin/clang++ \
+              -DLLVM_CMAKE_DIR=$opencilkdir \
+              -DCMAKE_INSTALL_PREFIX=$opencilkdir \
+              -DCILKTOOLS_OUTPUT_DIR="$(pwd)"/lib/clang/$clangversion \
+              -DCILKTOOLS_INSTALL_PATH=$opencilkdir/lib/clang/$clangversion \
+              ${{ inputs.extra_cmake_args }}
+        ninja -C "$builddir" '${{ inputs.build_target }}'
