@@ -12,11 +12,11 @@ inputs:
   build_target:
     description: 'Ninja build target'
     required: false
-    default: 'all'
-  opencilk_build:
-    description: 'Path to OpenCilk build directory'
+    default: 'install'
+  opencilk_install:
+    description: 'Path to OpenCilk install directory'
     required: false
-    default: '$(pwd)/opencilk/build'
+    default: '$(pwd)/opencilk/install'
 
 outputs:
   cheetah-builddir:
@@ -45,7 +45,8 @@ runs:
       shell: bash
       run: |
         builddir="$(pwd)"/cheetah/build
-        opencilkdir='${{ inputs.opencilk_build }}'
+        opencilkdir='${{ inputs.opencilk_install }}'
+        clangversion="$(opencilkdir/bin/llvm-config --version | cut -d '.' -f 1)"
         mkdir -p $builddir
         echo "cheetah-builddir=$builddir" >> "$GITHUB_OUTPUT"
         cmake -G Ninja \
@@ -55,5 +56,9 @@ runs:
               -DCMAKE_C_COMPILER=$opencilkdir/bin/clang \
               -DCMAKE_CXX_COMPILER=$opencilkdir/bin/clang++ \
               -DLLVM_CMAKE_DIR=$opencilkdir \
+              -DCMAKE_INSTALL_PREFIX=$opencilkdir \
+              -DCHEETAH_OUTPUT_DIR="$(pwd)"/lib/clang/$clangversion \
+              -DCHEETAH_INSTALL_PATH=$opencilkdir/lib/clang/$clangversion \
+              -DCHEETAH_DIRECTORY_PER_TARGET=On \
               ${{ inputs.extra_cmake_args }}
         ninja -C "$builddir" '${{ inputs.build_target }}'

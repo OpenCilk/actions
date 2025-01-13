@@ -17,15 +17,14 @@ inputs:
     description: 'LLVM subprojects to build'
     required: false
     default: 'clang'
-  python_version:
-    required: false
-    type: string
-    default: '3.12'
 
 outputs:
   opencilk-builddir:
     description: "OpenCilk build directory"
     value: ${{ steps.build-opencilk.outputs.opencilk-builddir }}
+  opencilk-installdir:
+    description: "OpenCilk install directory"
+    value: ${{ steps.build-opencilk.outputs.opencilk-installdir }}
 
 permissions:
   contents: read
@@ -67,6 +66,7 @@ runs:
       id: build-opencilk
       run: |
         builddir="$(pwd)"/opencilk/build
+        installdir="$(pwd)"/opencilk/install
         mkdir -p $builddir
         if [ "${{ runner.os }}" == "Linux" ]; then
           extra_cmake_args="-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
@@ -76,6 +76,7 @@ runs:
           extra_cmake_args="-DLLVM_DISABLE_ASSEMBLY_FILES=ON"
         fi
         echo "opencilk-builddir=$builddir" >> "$GITHUB_OUTPUT"
+        echo "opencilk-installdir=$installdir" >> "$GITHUB_OUTPUT"
         cmake -G Ninja \
               -B "$builddir" \
               -S opencilk/llvm \
@@ -85,6 +86,8 @@ runs:
               -DLLDB_INCLUDE_TESTS=OFF \
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_INSTALL_PREFIX=$installdir \
               $extra_cmake_args \
               ${{ inputs.extra_cmake_args }}
         ninja -C "$builddir" '${{ inputs.build_target }}'
+        ninja -C "$builddir" install
