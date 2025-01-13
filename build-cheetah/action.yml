@@ -60,8 +60,9 @@ runs:
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=$opencilkdir/bin/clang \
               -DCMAKE_CXX_COMPILER=$opencilkdir/bin/clang++ \
-              -DLLVM_CMAKE_DIR=$opencilkbuilddir \
+              -DLLVM_CMAKE_DIR=$opencilkdir \
               -DCMAKE_INSTALL_PREFIX=$opencilkdir \
+              -DLLVM_COMMON_CMAKE_UTILS=$opencilkbuilddir/../cmake \
               -DCHEETAH_OUTPUT_DIR="$(pwd)"/lib/clang/$clangversion \
               -DCHEETAH_INSTALL_PATH=$opencilkdir/lib/clang/$clangversion \
               -DCHEETAH_DIRECTORY_PER_TARGET=On \
