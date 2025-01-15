@@ -43,7 +43,7 @@ The `build-cheetah` action checks out and builds the OpenCilk runtime system.
     opencilk_build: ''
 
     # Ninja build target.
-    # Default: 'all'
+    # Default: 'install'
     build_target: ''
 
     # List of OS's to build for.
@@ -71,7 +71,7 @@ The `build-cilktools` action checks out and builds the OpenCilk runtime system.
     opencilk_build: ''
 
     # Ninja build target.
-    # Default: 'all'
+    # Default: 'install'
     build_target: ''
 
     # List of OS's to build for.
